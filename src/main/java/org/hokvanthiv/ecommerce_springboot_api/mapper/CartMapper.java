@@ -84,6 +84,8 @@ public class CartMapper {
 
         dto.setTotalPrice(price * qty);
 
+        dto.setCreatedAt(item.getCreatedAt());
+
         return dto;
     }
 

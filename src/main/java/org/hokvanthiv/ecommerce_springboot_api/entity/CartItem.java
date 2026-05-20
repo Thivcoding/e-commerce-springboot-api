@@ -16,6 +16,7 @@ public class CartItem {
     private Long id;
 
     private Integer quantity;
+    private Double price;
 
     @ManyToOne
     @JoinColumn(name = "cart_id")

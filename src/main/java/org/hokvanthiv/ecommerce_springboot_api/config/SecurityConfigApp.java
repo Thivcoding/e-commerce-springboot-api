@@ -34,13 +34,13 @@ public class SecurityConfigApp {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable()) // disable csrf for API
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // allow register/login
-                        .anyRequest().authenticated() // others need auth
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated() // others need auths
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

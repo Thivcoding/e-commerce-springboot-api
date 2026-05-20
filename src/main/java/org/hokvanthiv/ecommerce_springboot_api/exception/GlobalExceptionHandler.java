@@ -61,6 +61,22 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    // =========================
+    // 409 CONFLICT (DUPLICATE)
+    // =========================
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<?>> handleDuplicate(AccessDeniedException ex){
+
+        ApiResponse<?> response = ApiResponse.error(
+                409,
+                ex.getMessage()
+        );
+
+        response.setTimestamp(LocalDateTime.now());
+
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
 
     // =========================
     // 500 INTERNAL SERVER ERROR
