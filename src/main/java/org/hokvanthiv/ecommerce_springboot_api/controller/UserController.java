@@ -16,7 +16,7 @@ import java.util.List;
 @RequestMapping("/api/users")
 public class UserController {
 
-    private UserService userService;
+    private final UserService userService;
 
     public UserController(UserService userService){
         this.userService = userService;
@@ -28,35 +28,70 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponseDTO>> createUser(
             @Valid @ModelAttribute UserRequestDTO request){
 
-        return ResponseEntity.status(HttpStatus.CREATED).
-                body(
-                        ApiResponse.success(userService.createUser(request),
-                                "User create successfully"
-                        ));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(
+                        ApiResponse.success(
+                                userService.createUser(request),
+                                "User created successfully"
+                        )
+                );
     }
 
-    // GET USER ALL
+    // GET ALL USERS
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<UserResponseDTO>>> getAllUser(){
 
         return ResponseEntity.ok(
-                ApiResponse.success(userService.getUserAll()
-                , "Get Users Successfully")
+                ApiResponse.success(
+                        userService.getUserAll(),
+                        "Get users successfully"
+                )
         );
     }
 
-    // GET USER ALL
+    // GET USER BY ID
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponseDTO>> getUserById(
-            @PathVariable Long id
-    ){
+            @PathVariable Long id){
 
         return ResponseEntity.ok(
-                ApiResponse.success(userService.getUserById(id)
-                        , "Get Users by id Successfully")
+                ApiResponse.success(
+                        userService.getUserById(id),
+                        "Get user by id successfully"
+                )
         );
     }
 
+    // UPDATE USER
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserResponseDTO>> updateUser(
+            @PathVariable Long id,
+            @Valid @ModelAttribute UserRequestDTO request){
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        userService.updateUser(id, request),
+                        "User updated successfully"
+                )
+        );
+    }
+
+    // DELETE USER
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<String>> deleteUser(
+            @PathVariable Long id){
+
+        userService.deleteUser(id);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        null,
+                        "User deleted successfully"
+                )
+        );
+    }
 }

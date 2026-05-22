@@ -1,7 +1,9 @@
 package org.hokvanthiv.ecommerce_springboot_api.service.Impl;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.hokvanthiv.ecommerce_springboot_api.Enum.OrderStatus;
+import org.hokvanthiv.ecommerce_springboot_api.Enum.PaymentMethod;
 import org.hokvanthiv.ecommerce_springboot_api.Enum.PaymentStatus;
 import org.hokvanthiv.ecommerce_springboot_api.dto.request.PaymentRequestDTO;
 import org.hokvanthiv.ecommerce_springboot_api.dto.response.PaymentResponseDTO;
@@ -34,65 +36,49 @@ public class PaymentServiceImpl implements PaymentService {
     // CREATE PAYMENT
     // =========================
     @Override
-    public PaymentResponseDTO createPayment(
-            String email,
-            PaymentRequestDTO request
-    ) {
+    public PaymentResponseDTO createPayment(String email, PaymentRequestDTO request) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "User not found"
-                        ));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        Order order = orderRepository
-                .findById(request.getOrderId())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Order not found"
-                        ));
+        Order order = orderRepository.findById(request.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        // owner check
-        if (!order.getUser().getId()
-                .equals(user.getId())) {
-
-            throw new AccessDeniedException(
-                    "You cannot pay another user's order"
-            );
+        // check owner
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("You cannot pay another user's order");
         }
 
-        // already paid check
+        // prevent duplicate payment
         paymentRepository.findByOrderId(order.getId())
-                .ifPresent(payment -> {
-                    throw new DuplicateResourceException(
-                            "Payment already exists for this order"
-                    );
+                .ifPresent(p -> {
+                    throw new DuplicateResourceException("Payment already exists");
                 });
 
-        Payment payment = PaymentMapper
-                .toEntity(request, order);
+        Payment payment = PaymentMapper.toEntity(request, order);
 
-        // generate invoice
         payment.setInvoiceNo(
-                "INV-" + UUID.randomUUID()
-                        .toString()
-                        .substring(0, 8)
-                        .toUpperCase()
+                "INV-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase()
         );
 
-        payment.setPaymentStatus(
-                PaymentStatus.PENDING
-        );
+        // ONLY 2 OPTIONS LOGIC
+        if (request.getPaymentMethod() == PaymentMethod.CASH) {
 
-        // fake KHQR string
-        payment.setQrString(
-                "000201010211KHQR123456789"
-        );
+            payment.setPaymentMethod(PaymentMethod.CASH);
+            payment.setQrString(null); // no QR for cash
 
-        Payment savedPayment =
-                paymentRepository.save(payment);
+        } else if (request.getPaymentMethod() == PaymentMethod.BAKONG) {
 
-        return PaymentMapper.toDTO(savedPayment);
+            payment.setPaymentMethod(PaymentMethod.BAKONG);
+
+            // generate KHQR string
+            payment.setQrString("000201010211KHQR123456789");
+
+        }
+
+        Payment saved = paymentRepository.save(payment);
+
+        return PaymentMapper.toDTO(saved);
     }
 
     // =========================
@@ -178,46 +164,31 @@ public class PaymentServiceImpl implements PaymentService {
     // =========================
     // UPDATE PAYMENT STATUS
     // =========================
+    @Transactional
     @Override
-    public PaymentResponseDTO updatePaymentStatus(
-            Long id,
-            String status
-    ) {
+    public PaymentResponseDTO updatePaymentStatus(Long id, String status) {
 
-        Payment payment = paymentRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Payment not found"
-                        ));
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 
         PaymentStatus paymentStatus =
-                PaymentStatus.valueOf(
-                        status.toUpperCase()
-                );
+                PaymentStatus.valueOf(status.trim().toUpperCase());
 
         payment.setPaymentStatus(paymentStatus);
 
-        // if paid
         if (paymentStatus == PaymentStatus.PAID) {
 
-            payment.setPaidAt(
-                    LocalDateTime.now()
-            );
+            payment.setPaidAt(LocalDateTime.now());
+            payment.setBakongTxnId(UUID.randomUUID().toString());
 
-            payment.setBakongTxnId(
-                    UUID.randomUUID().toString()
-            );
-
-            // update order status
             Order order = payment.getOrder();
-
             order.setStatus(OrderStatus.PAID);
+
+            orderRepository.save(order);
         }
 
-        Payment updatedPayment =
-                paymentRepository.save(payment);
+        Payment updated = paymentRepository.save(payment);
 
-        return PaymentMapper.toDTO(updatedPayment);
+        return PaymentMapper.toDTO(updated);
     }
 }

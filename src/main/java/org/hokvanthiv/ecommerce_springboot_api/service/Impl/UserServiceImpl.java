@@ -18,9 +18,9 @@ import java.util.List;
 @Service
 public class UserServiceImpl implements UserService {
 
-    private UserRepository userRepository;
-    private PasswordEncoder passwordEncoder;
-    private CloudinaryService cloudinaryService;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final CloudinaryService cloudinaryService;
 
     public UserServiceImpl(UserRepository userRepository,
                            PasswordEncoder passwordEncoder,
@@ -29,27 +29,31 @@ public class UserServiceImpl implements UserService {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.cloudinaryService = cloudinaryService;
-
     }
 
     // CREATE USER
     @Override
     public UserResponseDTO createUser(UserRequestDTO dto) {
 
-        // check duplicate email
         if (userRepository.existsByEmail(dto.getEmail().toLowerCase().trim())) {
             throw new DuplicateResourceException("Email already exists");
         }
 
-        User entity =  UserMapper.toEntity(dto,passwordEncoder);
+        User entity = UserMapper.toEntity(dto, passwordEncoder);
 
-        if (dto.getImage() != null && !dto.getImage().isEmpty()){
+        // set role
+        if (dto.getRole() != null) {
+            entity.setRole(dto.getRole());
+        }
 
-            CloudinaryResponse upload = cloudinaryService.uploadFile(dto.getImage());
+        // upload image
+        if (dto.getImage() != null && !dto.getImage().isEmpty()) {
+
+            CloudinaryResponse upload =
+                    cloudinaryService.uploadFile(dto.getImage());
 
             entity.setImageUrl(upload.getUrl());
             entity.setPublicId(upload.getPublicId());
-
         }
 
         User user = userRepository.save(entity);
@@ -57,37 +61,95 @@ public class UserServiceImpl implements UserService {
         return UserMapper.toDTO(user);
     }
 
-    // GET ALL
+    // GET ALL USERS
     @Override
     public List<UserResponseDTO> getUserAll() {
 
-        List<User> user = userRepository.findAll();
+        List<User> users = userRepository.findAll();
 
-        return user.stream()
+        return users.stream()
                 .map(UserMapper::toDTO)
                 .toList();
     }
 
-    // GET BY ID
+    // GET USER BY ID
     @Override
     public UserResponseDTO getUserById(Long id) {
 
-        User user = userRepository.findById(id).
-                orElseThrow(()-> new ResourceNotFoundException("User not found"));
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
 
         return UserMapper.toDTO(user);
     }
 
-    // UPDATE
+    // UPDATE USER
     @Override
     public UserResponseDTO updateUser(Long id, UserRequestDTO dto) {
-        return null;
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        // check duplicate email
+        if (!user.getEmail().equalsIgnoreCase(dto.getEmail())
+                && userRepository.existsByEmail(dto.getEmail())) {
+
+            throw new DuplicateResourceException("Email already exists");
+        }
+
+        // update fields
+        user.setName(dto.getName());
+        user.setEmail(dto.getEmail());
+
+        // UPDATE ROLE
+        if (dto.getRole() != null) {
+            user.setRole(dto.getRole());
+        }
+
+        // update password
+        if (dto.getPassword() != null
+                && !dto.getPassword().trim().isEmpty()) {
+
+            user.setPassword(
+                    passwordEncoder.encode(dto.getPassword())
+            );
+        }
+
+        // update image
+        if (dto.getImage() != null && !dto.getImage().isEmpty()) {
+
+            // delete old image
+            if (user.getPublicId() != null) {
+                cloudinaryService.deleteFile(user.getPublicId());
+            }
+
+            // upload new image
+            CloudinaryResponse upload =
+                    cloudinaryService.uploadFile(dto.getImage());
+
+            user.setImageUrl(upload.getUrl());
+            user.setPublicId(upload.getPublicId());
+        }
+
+        User updatedUser = userRepository.save(user);
+
+        return UserMapper.toDTO(updatedUser);
     }
 
-    // DELETE
-
+    // DELETE USER
     @Override
-    public void deleteUser() {
+    public void deleteUser(Long id) {
 
+        User user = userRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
+
+        // delete image from cloudinary
+        if (user.getPublicId() != null) {
+            cloudinaryService.deleteFile(user.getPublicId());
+        }
+
+        userRepository.delete(user);
     }
 }
