@@ -35,7 +35,6 @@ public class ProductController {
     }
 
     // GET ALL PRODUCT + IMAGE
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProductResponseDTO>>> getAllProduct(){
 
@@ -46,7 +45,6 @@ public class ProductController {
     }
 
     // GET PRODUCT BY ID
-    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ProductResponseDTO>> getProductById(@PathVariable Long id){
 

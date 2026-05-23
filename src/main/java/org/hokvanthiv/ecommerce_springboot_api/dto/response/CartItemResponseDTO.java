@@ -17,5 +17,7 @@ public class CartItemResponseDTO {
 
     private Double totalPrice;
 
+    private String imageUrl;
+
     private LocalDateTime createdAt;
 }

@@ -73,12 +73,20 @@ public class CartMapper {
         if (item.getProduct() != null) {
             dto.setProductId(item.getProduct().getId());
             dto.setProductName(item.getProduct().getName());
-
-            // important: use current product price OR stored price
             dto.setPrice(item.getProduct().getPrice());
+
+            // SAFE image handling
+            if (item.getProduct().getImages() != null &&
+                    !item.getProduct().getImages().isEmpty()) {
+
+                dto.setImageUrl(
+                        item.getProduct().getImages()
+                                .get(0)
+                                .getImageUrl()
+                );
+            }
         }
 
-        // total price per item
         double price = dto.getPrice() != null ? dto.getPrice() : 0.0;
         int qty = dto.getQuantity() != null ? dto.getQuantity() : 0;
 

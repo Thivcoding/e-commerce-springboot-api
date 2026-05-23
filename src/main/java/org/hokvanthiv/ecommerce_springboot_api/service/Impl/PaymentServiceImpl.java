@@ -44,12 +44,10 @@ public class PaymentServiceImpl implements PaymentService {
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
-        // check owner
         if (!order.getUser().getId().equals(user.getId())) {
             throw new AccessDeniedException("You cannot pay another user's order");
         }
 
-        // prevent duplicate payment
         paymentRepository.findByOrderId(order.getId())
                 .ifPresent(p -> {
                     throw new DuplicateResourceException("Payment already exists");
@@ -57,23 +55,30 @@ public class PaymentServiceImpl implements PaymentService {
 
         Payment payment = PaymentMapper.toEntity(request, order);
 
-        payment.setInvoiceNo(
-                "INV-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase()
-        );
+        payment.setInvoiceNo("INV-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
 
-        // ONLY 2 OPTIONS LOGIC
+        // =========================
+        // PAYMENT LOGIC FIXED
+        // =========================
         if (request.getPaymentMethod() == PaymentMethod.CASH) {
 
             payment.setPaymentMethod(PaymentMethod.CASH);
-            payment.setQrString(null); // no QR for cash
+            payment.setPaymentStatus(PaymentStatus.PAID); // ✅ AUTO PAID
+
+            payment.setPaidAt(LocalDateTime.now());
+
+            order.setStatus(OrderStatus.PAID);
+            orderRepository.save(order);
 
         } else if (request.getPaymentMethod() == PaymentMethod.BAKONG) {
 
             payment.setPaymentMethod(PaymentMethod.BAKONG);
+            payment.setPaymentStatus(PaymentStatus.PENDING); // ⏳ WAIT PAYMENT
 
-            // generate KHQR string
             payment.setQrString("000201010211KHQR123456789");
 
+            order.setStatus(OrderStatus.PENDING); // optional
+            orderRepository.save(order);
         }
 
         Payment saved = paymentRepository.save(payment);
@@ -166,25 +171,28 @@ public class PaymentServiceImpl implements PaymentService {
     // =========================
     @Transactional
     @Override
-    public PaymentResponseDTO updatePaymentStatus(Long id, String status) {
+    public PaymentResponseDTO updatePaymentStatus(Long id, PaymentStatus status) {
 
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
 
-        PaymentStatus paymentStatus =
-                PaymentStatus.valueOf(status.trim().toUpperCase());
+        if (payment.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new IllegalStateException("Payment already completed");
+        }
 
-        payment.setPaymentStatus(paymentStatus);
+        payment.setPaymentStatus(status);
 
-        if (paymentStatus == PaymentStatus.PAID) {
+        Order order = payment.getOrder();
+
+        if (status == PaymentStatus.PAID) {
 
             payment.setPaidAt(LocalDateTime.now());
             payment.setBakongTxnId(UUID.randomUUID().toString());
 
-            Order order = payment.getOrder();
-            order.setStatus(OrderStatus.PAID);
-
-            orderRepository.save(order);
+            if (order != null) {
+                order.setStatus(OrderStatus.PAID);
+                orderRepository.save(order);
+            }
         }
 
         Payment updated = paymentRepository.save(payment);

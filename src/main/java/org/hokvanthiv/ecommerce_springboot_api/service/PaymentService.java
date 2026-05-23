@@ -1,5 +1,6 @@
 package org.hokvanthiv.ecommerce_springboot_api.service;
 
+import org.hokvanthiv.ecommerce_springboot_api.Enum.PaymentStatus;
 import org.hokvanthiv.ecommerce_springboot_api.dto.request.PaymentRequestDTO;
 import org.hokvanthiv.ecommerce_springboot_api.dto.response.PaymentResponseDTO;
 
@@ -25,6 +26,6 @@ public interface PaymentService {
 
     PaymentResponseDTO updatePaymentStatus(
             Long id,
-            String status
+            PaymentStatus status
     );
 }

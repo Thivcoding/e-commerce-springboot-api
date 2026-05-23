@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.hokvanthiv.ecommerce_springboot_api.dto.common.ApiResponse;
 import org.hokvanthiv.ecommerce_springboot_api.dto.request.PaymentRequestDTO;
+import org.hokvanthiv.ecommerce_springboot_api.dto.request.PaymentStatusUpdateRequestDTO;
 import org.hokvanthiv.ecommerce_springboot_api.dto.response.PaymentResponseDTO;
 import org.hokvanthiv.ecommerce_springboot_api.service.PaymentService;
 import org.springframework.http.HttpStatus;
@@ -111,17 +112,16 @@ public class PaymentController {
     // =========================
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}/status")
-    public ResponseEntity<ApiResponse<PaymentResponseDTO>>
-    updatePaymentStatus(
+    public ResponseEntity<ApiResponse<PaymentResponseDTO>> updatePaymentStatus(
             @PathVariable Long id,
-            @RequestParam String status
+            @Valid @RequestBody PaymentStatusUpdateRequestDTO request
     ) {
 
         return ResponseEntity.ok(
                 ApiResponse.success(
                         paymentService.updatePaymentStatus(
                                 id,
-                                status
+                                request.getStatus()
                         ),
                         "Payment status updated successfully"
                 )
