@@ -127,4 +127,15 @@ public class PaymentController {
                 )
         );
     }
+
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    @GetMapping("/{id}/check-bakong")
+    public ResponseEntity<ApiResponse<PaymentResponseDTO>> checkBakong(@PathVariable Long id) {
+
+        PaymentResponseDTO response = paymentService.checkBakongPayment(id);
+
+        return ResponseEntity.ok(
+                ApiResponse.success(response, "Check bakong success")
+        );
+    }
 }

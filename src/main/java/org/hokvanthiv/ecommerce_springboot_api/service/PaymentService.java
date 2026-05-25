@@ -13,6 +13,8 @@ public interface PaymentService {
             PaymentRequestDTO request
     );
 
+    PaymentResponseDTO checkBakongPayment(Long paymentId);
+
     PaymentResponseDTO getPaymentById(
             Long id,
             String email

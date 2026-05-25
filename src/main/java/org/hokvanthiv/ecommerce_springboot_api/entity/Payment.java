@@ -31,7 +31,7 @@ public class Payment {
     private String qrString;
     private String bakongTxnId;
 
-    @CreationTimestamp
+    @Column(nullable = true)
     private LocalDateTime paidAt;
 
     @ManyToOne
